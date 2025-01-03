@@ -105,13 +105,14 @@
     <div class="chat-history">
       <h5>Chat History</h5>
       {% for chats in previous_chat %}
-      <div class="history-item">{{chats.name}}</div>
+      <div class="history-item" data-id="{{ chats.id }}">{{ chats.name }}</div>
       {% endfor %}
     </div>
     <!-- Chat interface section -->
     <div class="chat-main">
       <div class="chat-header">
         Chatbot
+        <button class="history-item btn btn-primary" data-id="-1" type="button">New Chat</button>
       </div>
       <div class="chat-body">
         <!-- Chat history -->
@@ -129,17 +130,56 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    let currentChatId = null; // This will store the selected chat ID
+
+    // Function to handle the selection of a chat from the history
+    document.querySelectorAll('.history-item').forEach(item => {
+      item.addEventListener('click', function() {
+        currentChatId = this.getAttribute('data-id'); // Get the chat ID from the clicked history item
+        console.log('Selected Chat ID:', currentChatId);
+        sendChatId(currentChatId); // Send the selected chat ID when clicked
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      });
+    });
+
+    function sendChatId(chatId) {
+      // Send chat_id to server on page load or chat selection
+      fetch('/set_chat_id/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken') // Django requires a CSRF token
+        },
+        body: JSON.stringify({ chat_id: chatId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Chat ID Sent:', data);
+      })
+      .catch(error => console.error('Error:', error));
+    }
+
     function sendMessage() {
       const message = document.getElementById('message-input').value;
       if (!message.trim()) return; // Don't send empty messages
-  
+      
+      if (!currentChatId) {
+        alert('Please select a chat from the history!');
+        return;
+      }
+
       fetch('/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken') // Django requires a CSRF token
         },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({
+          message: message,
+          chat_id: currentChatId  // Include the selected chat ID with the message
+        })
       })
       .then(response => response.json())
       .then(data => {
@@ -151,13 +191,25 @@
       })
       .catch(error => console.error('Error:', error));
     }
-  
+
     // Helper function to get CSRF token
     function getCookie(name) {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
       if (parts.length === 2) return parts.pop().split(';').shift();
     }
+
+    // Send the chat ID automatically when the page loads or on initial setup
+    window.onload = function() {
+      // You can choose to automatically send the first chat ID if desired
+      // or rely on users to select a chat
+      const firstChatId = document.querySelector('.history-item')?.getAttribute('data-id');
+      if (firstChatId) {
+        currentChatId = firstChatId;
+        sendChatId(currentChatId);
+      }
+    };
+
   </script>
 </body>
 </html>
