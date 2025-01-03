@@ -191,6 +191,9 @@
         chatBody.appendChild(botMessage);
       })
       .catch(error => console.error('Error:', error));
+      setTimeout(() => {
+        location.reload();
+      }, 5000);
     }
 
     // Helper function to get CSRF token
